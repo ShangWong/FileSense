@@ -1,0 +1,30 @@
+Invoice
+
+Date: August 20, 2024
+Invoice Number: INV-20240820-001
+
+Bill To:
+Microsoft Corporation
+One Microsoft Way
+Redmond, WA 98052-6399
+USA
+
+Ship To:
+Microsoft Corporation
+One Microsoft Way
+Redmond, WA 98052-6399
+USA
+
+Description:
+
+表格
+
+Item	Quantity	Unit Price	Total Price
+iPhone 15 Black 128GB	1	$999.00	$999.00
+Subtotal: $999.00
+Tax (10%): $99.90
+Total Amount: $1,098.90
+
+Payment Method: Credit Card
+
+Thank you for your purchase!
