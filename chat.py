@@ -25,7 +25,13 @@ def summarize_document(file_path):
     trimmed_content = trim_document_content(document_content)
 
     # Define the prompt for summarization
-    prompt = """You are a professional file handler.
+    basicTone = """You are a professional file handler.
+    You must return your handling result in a json format.
+    The json you returned must contain the following 2 properties.
+    1) summary
+    2) actions
+    """
+    prompt = """
 You will read a file, you will give a short summary (up to 200 words), and give next possible actions in an array format.
 For example,
 1) For a travel plan file, you would give suggestions to set up todos for booking hotels, reserve rental cars;
@@ -84,6 +90,10 @@ You would return the response in the following example format. Please return a p
     # Call the OpenAI API to get the summary
     response = client.chat.completions.create(
         messages=[
+            {
+                "role": "system",
+                "content": basicTone,
+            },
             {
                 "role": "user",
                 "content": prompt,
