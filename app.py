@@ -35,7 +35,6 @@ class FileSense(tk.Tk):
         tk.Label(self.labelframe_explorer, textvariable = self.var_address, anchor="w", justify = tk.LEFT).place(x = 20, y = 20)
         self.frame_files = tk.Frame(self.labelframe_explorer, height = 800, width = 760)
         self.frame_files.place(x = 20, y = 60)
-        self.display_files(os.getcwd())
 
         self.frame_senses = tk.Frame(self, height = 1000, width = 800)
         self.frame_senses.place(x = 840, y = 20)
@@ -45,6 +44,8 @@ class FileSense(tk.Tk):
         self.labelframe_summary.pack(fill = tk.BOTH, expand = False, pady = 8)
         self.labelframe_sense = tk.LabelFrame(self.frame_senses, text = "Sense", height = 400, width = 800)
         self.labelframe_sense.pack(fill = tk.BOTH, expand = True, pady = 8)
+
+        self.display_files(os.getcwd())
 
     def display_files(self, path):
 
@@ -61,12 +62,6 @@ class FileSense(tk.Tk):
             return icon
 
         def on_item_click(path):
-            for widget in self.labelframe_preview.winfo_children():
-                widget.destroy()
-            for widget in self.labelframe_summary.winfo_children():
-                widget.destroy()
-            for widget in self.labelframe_sense.winfo_children():
-                widget.destroy()
             if os.path.isdir(path):
                 self.geometry("840x1040")
                 for widget in self.frame_files.winfo_children():
@@ -76,6 +71,14 @@ class FileSense(tk.Tk):
                 self.display_files(path)
             else:
                 self.preview_file(path)
+
+        for widget in self.labelframe_preview.winfo_children():
+            widget.destroy()
+        for widget in self.labelframe_summary.winfo_children():
+            widget.destroy()
+        for widget in self.labelframe_sense.winfo_children():
+            widget.destroy()
+
         try:
             items = ["..\\"] + os.listdir(path)
         except PermissionError:
@@ -94,14 +97,14 @@ class FileSense(tk.Tk):
 
     def monitor_thread(self, thread):
         if thread.is_alive():
-            self.after(200, lambda: self.monitor(thread))
+            self.after(200, lambda: self.monitor_thread(thread))
             _animation = self.var_animation.get()
             _animation = _animation[-1] + _animation[:-1]
             self.var_animation.set(_animation)
         else:
-            self.update_senses(thread.response)
+            self.update_senses(thread.response, thread.path)
 
-    def update_senses(self, response):
+    def update_senses(self, response, filepath):
         payload = json.loads(response)
         summary = payload["summary"]
         actions = payload["actions"]
@@ -111,13 +114,19 @@ class FileSense(tk.Tk):
         for widget in self.labelframe_sense.winfo_children():
             widget.destroy()
 
-        scrolledtext_summary = scrolledtext.ScrolledText(self.labelframe_summary, height = 12, width = 94, wrap = tk.WORD, background = "#f0f0f0", borderwidth = 0, state = tk.NORMAL)
+        scrolledtext_summary = scrolledtext.ScrolledText(self.labelframe_summary, height = 10, width = 94, wrap = tk.WORD, background = "#f0f0f0", borderwidth = 0, state = tk.NORMAL)
         scrolledtext_summary.insert(tk.END, summary)
         scrolledtext_summary.configure(state = tk.DISABLED)
         scrolledtext_summary.pack()
 
-        def mailto(mailto_uri):
-            webbrowser.open(mailto_uri)
+        def rename_file(path, suggest_name):
+            file_path, full_file_name = os.path.split(path)
+            file_name, file_extension = os.path.splitext(full_file_name)
+            new_name = os.path.join(file_path, suggest_name + file_extension)
+            os.rename(path, new_name)
+            self.display_files(self.current_path)
+            self.preview_file(new_name)
+
         def not_implemented():
             messagebox.showerror("Warning", "Action not supported yet")
 
@@ -135,7 +144,7 @@ class FileSense(tk.Tk):
                     button_command = lambda mailto_uri = "mailto:{to}?subject={subject}&body={body}"\
                         .format(to = suggest.get("to",""), subject = suggest.get("title",""), body = suggest.get("body",""))\
                         .replace(" ","%20")\
-                        .replace(",", "%2C") : mailto(mailto_uri)
+                        .replace(",", "%2C") : webbrowser.open(mailto_uri)
                 elif _action == "todo":
                     action_text = "{}. Create TODO item \"{}\""\
                         .format(idx + 1, suggest.get("title",""))
@@ -145,6 +154,8 @@ class FileSense(tk.Tk):
                         .format(idx + 1, suggest)
                     button_text = "Rename"
 
+                    button_command = lambda path = filepath, suggest_name = suggest: rename_file(path, suggest_name)
+
                 _frame = tk.Frame(self.labelframe_sense)
                 _frame.pack(fill = tk.BOTH, expand = True, pady = 1)
 
@@ -153,10 +164,17 @@ class FileSense(tk.Tk):
                 tk.Button(_frame, text = button_text, command = button_command, height = 1, width = 10)\
                     .pack(side = tk.LEFT, padx = 20)
 
-    def preview_file(self, path):
-        _, file_extension = os.path.splitext(path)
+    def preview_file(self, filepath):
+        for widget in self.labelframe_preview.winfo_children():
+            widget.destroy()
+        for widget in self.labelframe_summary.winfo_children():
+            widget.destroy()
+        for widget in self.labelframe_sense.winfo_children():
+            widget.destroy()
+
+        _, file_extension = os.path.splitext(filepath)
         if file_extension in [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]:
-            content = Preprocessor.create(path).process()
+            content = Preprocessor.create(filepath).process()
 
             scrolledtext_preview = scrolledtext.ScrolledText(self.labelframe_preview, height = 32, width = 94, wrap = tk.WORD, background = "#f0f0f0", borderwidth = 0, state = tk.NORMAL)
             scrolledtext_preview.insert(tk.END, content)
@@ -168,10 +186,12 @@ class FileSense(tk.Tk):
             for widget in self.labelframe_sense.winfo_children():
                 widget.destroy()
 
-            tk.Label(self.labelframe_summary, textvariable = self.var_animation, height = 12).pack(expand = True, fill = tk.BOTH)
-            tk.Label(self.labelframe_sense, textvariable = self.var_animation, height = 12).pack(expand = True, fill = tk.BOTH)
+            tk.Label(self.labelframe_summary, textvariable = self.var_animation, height = 12)\
+                .pack(expand = True, fill = tk.BOTH)
+            tk.Label(self.labelframe_sense, textvariable = self.var_animation, height = 13)\
+                .pack(expand = True, fill = tk.BOTH)
 
-            chat_thread = AsyncChat(path)
+            chat_thread = AsyncChat(filepath)
             chat_thread.start()
             self.monitor_thread(chat_thread)
 
