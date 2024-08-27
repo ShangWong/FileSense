@@ -1,0 +1,7 @@
+openai
+python-dotenv
+Pillow
+PyMuPDF
+pandas
+mammoth
+openpyxl
