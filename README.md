@@ -1,4 +1,4 @@
-FileSense
+# FileSense
 
 ## Setup
 
@@ -10,6 +10,13 @@ pip install -r requirements.txt
 
 ## Run
 
-```powershell
-python .\app.py
-```
+1. Create a new file under the project folder named `.env`.
+1. Put the following content to it, replace `<your_open_ai_api_key>` with the actual OpenAI API key.
+    ```txt
+    OPENAI_API_KEY=<your_open_ai_key>
+    ```
+1. Save the file.
+1. Run:
+    ```powershell
+    python .\app.py
+    ```
