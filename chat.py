@@ -1,27 +1,29 @@
 import os
+import dotenv
 from openai import OpenAI
- 
+from preprocessor import Preprocessor
+
+dotenv.load_dotenv()
+
 client = OpenAI(
-    # This is the default and can be omitted
-    api_key='',
+    api_key=os.getenv('OPENAI_API_KEY'),
 )
- 
+
 def trim_document_content(document_content, max_chars=10000):
     """
     Trims the document content to the specified maximum number of characters.
     """
     # Trim the content to the first max_chars characters
     return document_content[:max_chars]
- 
- 
+
+
 def summarize_document(file_path):
     # Read the content of the file
-    with open(file_path, 'r', encoding="utf8", errors='ignore') as file:
-        document_content = file.read()
-   
+    document_content = Preprocessor.create(file_path).process()
+
     # Trim the document content
     trimmed_content = trim_document_content(document_content)
- 
+
     # Define the prompt for summarization
     prompt = """You are a professional file handler.
 You will read a file, you will give a short summary (up to 200 words), and give next possible actions in an array format.
@@ -78,7 +80,7 @@ You would return the response in the following example format. Please return a p
     ]
 }"""
     prompt += f"Now handle this doc:\n\n{trimmed_content}.\n\n"
- 
+
     # Call the OpenAI API to get the summary
     response = client.chat.completions.create(
         messages=[
@@ -89,13 +91,12 @@ You would return the response in the following example format. Please return a p
         ],
         model="gpt-4o-mini",
     )
- 
+
     # Extract and print the summary
     summary = response.choices[0].message.content
     print("Summary:\n", summary)
     return summary
- 
+
 # # Specify the path to your document
 # file_path = "invoice.txt"
 # summarize_document(file_path)
- 
