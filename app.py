@@ -47,6 +47,19 @@ class FileSense(tk.Tk):
 
         self.display_files(os.getcwd())
 
+    def show_tooltip(self, msg):
+        self.tooltip_window = tk.Toplevel(self)
+        tooltip_label = tk.Label(self.tooltip_window, text = msg)
+        tooltip_label.pack()
+        self.tooltip_window.overrideredirect(True)
+        x = self.winfo_pointerx() + 20
+        y = self.winfo_pointery() + 20
+        self.tooltip_window.geometry("+{}+{}".format(x, y))
+
+    def hide_tooltip(self, event):
+        self.tooltip_window.destroy()
+        self.tooltip_window = None
+
     def display_files(self, path):
 
         def get_icon(item_path):
@@ -62,6 +75,8 @@ class FileSense(tk.Tk):
             return icon
 
         def on_item_click(path):
+            self.tooltip_window.destroy()
+
             if os.path.isdir(path):
                 self.geometry("840x1040")
                 for widget in self.frame_files.winfo_children():
@@ -93,6 +108,8 @@ class FileSense(tk.Tk):
             icon = get_icon(item_path)
             button = tk.Button(self.frame_files, text = truncate_name(item), image = icon, compound = "top", command = lambda p=item_path: on_item_click(p), height = 100, width = 100, background = "#f0f0f0", borderwidth = 0)
             button.image = icon
+            button.bind("<Enter>", lambda event, msg = item: self.show_tooltip(msg))
+            button.bind("<Leave>", self.hide_tooltip)
             button.grid(row = idx // 6, column = idx % 6, padx = 10, pady = 10)
 
     def monitor_thread(self, thread):
