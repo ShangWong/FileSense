@@ -7,7 +7,7 @@ def _get_file_extension(file_path: str):
     # Use os.path.splitext to split the file path into the base name and the extension
     _, file_extension = os.path.splitext(file_path)
     # Return the file extension without the leading dot
-    return file_extension[1:] if file_extension else None
+    return file_extension[1:].lower() if file_extension else None
 
 class Preprocessor:
     def __init__(self, file_path: str):

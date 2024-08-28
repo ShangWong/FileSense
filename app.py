@@ -31,8 +31,8 @@ class FileSenseHelper:
             if os.path.isdir(full_path):
                 return "folder"
             _, _, file_extension = FileSenseHelper.split_full_path(full_path)
-            if file_extension in SUPPORTED_FILE_EXTENSIONS:
-                return file_extension[1:]
+            if file_extension.lower() in SUPPORTED_FILE_EXTENSIONS:
+                return file_extension[1:].lower()
             return "file"
 
         return ImageTk.PhotoImage(Image.open("./resources/{}.png".format(get_icon_name_without_extension())).resize((80, 80)))
@@ -192,7 +192,7 @@ class FileSense(tk.Tk):
 
         _, _, file_extension = FileSenseHelper.split_full_path(full_path)
 
-        if file_extension in SUPPORTED_FILE_EXTENSIONS:
+        if file_extension.lower() in SUPPORTED_FILE_EXTENSIONS:
             content = Preprocessor.create(full_path).process()
 
             scrolledtext_preview = scrolledtext.ScrolledText(self.labelframe_preview, height = 32, width = 94, wrap = tk.WORD, background = "#f0f0f0", borderwidth = 0, state = tk.NORMAL)
