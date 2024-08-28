@@ -9,11 +9,12 @@ from chat import summarize_document
 from preprocessor import Preprocessor
 
 class AsyncChat(Thread):
-    def __init__(self, path):
+    def __init__(self, file_path, content):
         super().__init__()
-        self.path = path
+        self.file_path = file_path
+        self.content = content
     def run(self):
-        self.response = summarize_document(self.path)
+        self.response = summarize_document(self.content)
 
 class FileSense(tk.Tk):
     def __init__(self):
@@ -119,9 +120,9 @@ class FileSense(tk.Tk):
             _animation = _animation[-1] + _animation[:-1]
             self.var_animation.set(_animation)
         else:
-            self.update_senses(thread.response, thread.path)
+            self.update_senses(thread.response, thread.file_path)
 
-    def update_senses(self, response, filepath):
+    def update_senses(self, response, file_path):
         payload = json.loads(response)
         summary = payload["summary"]
         actions = payload["actions"]
@@ -171,7 +172,7 @@ class FileSense(tk.Tk):
                         .format(idx + 1, suggest)
                     button_text = "Rename"
 
-                    button_command = lambda path = filepath, suggest_name = suggest: rename_file(path, suggest_name)
+                    button_command = lambda path = file_path, suggest_name = suggest: rename_file(path, suggest_name)
 
                 _frame = tk.Frame(self.labelframe_sense)
                 _frame.pack(fill = tk.BOTH, expand = True, pady = 1)
@@ -181,7 +182,7 @@ class FileSense(tk.Tk):
                 tk.Button(_frame, text = button_text, command = button_command, height = 1, width = 10)\
                     .pack(side = tk.LEFT, padx = 20)
 
-    def preview_file(self, filepath):
+    def preview_file(self, file_path):
         for widget in self.labelframe_preview.winfo_children():
             widget.destroy()
         for widget in self.labelframe_summary.winfo_children():
@@ -189,9 +190,9 @@ class FileSense(tk.Tk):
         for widget in self.labelframe_sense.winfo_children():
             widget.destroy()
 
-        _, file_extension = os.path.splitext(filepath)
+        _, file_extension = os.path.splitext(file_path)
         if file_extension in [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]:
-            content = Preprocessor.create(filepath).process()
+            content = Preprocessor.create(file_path).process()
 
             scrolledtext_preview = scrolledtext.ScrolledText(self.labelframe_preview, height = 32, width = 94, wrap = tk.WORD, background = "#f0f0f0", borderwidth = 0, state = tk.NORMAL)
             scrolledtext_preview.insert(tk.END, content)
@@ -208,7 +209,7 @@ class FileSense(tk.Tk):
             tk.Label(self.labelframe_sense, textvariable = self.var_animation, height = 13)\
                 .pack(expand = True, fill = tk.BOTH)
 
-            chat_thread = AsyncChat(filepath)
+            chat_thread = AsyncChat(file_path, content)
             chat_thread.start()
             self.monitor_thread(chat_thread)
 

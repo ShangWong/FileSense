@@ -17,9 +17,8 @@ def trim_document_content(document_content, max_chars=10000):
     return document_content[:max_chars]
 
 
-def summarize_document(file_path):
+def summarize_document(document_content):
     # Read the content of the file
-    document_content = Preprocessor.create(file_path).process()
 
     # Trim the document content
     trimmed_content = trim_document_content(document_content)
