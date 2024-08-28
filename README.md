@@ -14,6 +14,7 @@ pip install -r requirements.txt
 1. Put the following content to it, replace `<your_open_ai_api_key>` with the actual OpenAI API key.
     ```txt
     OPENAI_API_KEY=<your_open_ai_key>
+    OPENAI_API_BASE_URL=<if you have custom endpoint>
     ```
 1. Save the file.
 1. Run:
