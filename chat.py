@@ -5,10 +5,7 @@ from preprocessor import Preprocessor
 
 dotenv.load_dotenv()
 
-client = OpenAI(
-    base_url=os.getenv('OPENAI_API_BASE_URL'),
-    api_key=os.getenv('OPENAI_API_KEY'),
-)
+client = OpenAI()
 
 def trim_document_content(document_content, max_chars=10000):
     """
