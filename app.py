@@ -47,6 +47,7 @@ class FileSense(tk.Tk):
 
         # Init variables
         self.current_path = os.getcwd()
+        self.current_file = None
         self.var_address = tk.StringVar()
         self.var_address.set(os.getcwd())
         self.var_animation = tk.StringVar()
@@ -56,7 +57,7 @@ class FileSense(tk.Tk):
         self.labelframe_explorer = tk.LabelFrame(self, text = "Explorer", height = 1000, width = 600)
         self.labelframe_explorer.place(x = 20, y = 20)
         tk.Label(self.labelframe_explorer, text = "Path:").place(x = 30, y = 20)
-        self.entry_address = tk.Entry(self.labelframe_explorer, textvariable = self.var_address, width = 50, font = ("12"), background = "#f0f0f0", borderwidth = 1)
+        self.entry_address = tk.Entry(self.labelframe_explorer, textvariable = self.var_address, width = 80, background = "#f0f0f0", borderwidth = 1)
         self.entry_address.bind('<Return>', self.update_address)
         self.entry_address.place(x = 70, y = 20)
         self.frame_files = tk.Frame(self.labelframe_explorer, height = 800, width = 600)
@@ -92,20 +93,21 @@ class FileSense(tk.Tk):
         y = self.winfo_pointery() + 20
         self.tooltip_window.geometry("+{}+{}".format(x, y))
 
-    def hide_tooltip(self, event):
+    def hide_tooltip(self):
         self.tooltip_window.destroy()
         self.tooltip_window = None
 
     def update_explorer(self, path):
 
         def on_item_click(path):
-            self.tooltip_window.destroy()
+            if self.tooltip_window:
+                self.hide_tooltip()
             if os.path.isdir(path):
                 self.update_explorer(path)
             else:
                 self.update_file(path)
 
-        truncate_name = lambda name: name if len(name) < 18 else name[:15] + "..."
+        truncate_name = lambda name: name if len(name) < 15 else name[:12] + "..."
 
         self.geometry("640x1040")
         for widget in self.frame_files.winfo_children():
@@ -114,7 +116,7 @@ class FileSense(tk.Tk):
         self.var_address.set(self.current_path)
 
         try:
-            items = ["..\\"] + os.listdir(path)
+            items = [os.pardir] + os.listdir(path)
         except PermissionError:
             messagebox.showerror("Error", "You do not have permission to access this folder.")
             on_item_click(os.getcwd())
@@ -126,7 +128,7 @@ class FileSense(tk.Tk):
             button = tk.Button(self.frame_files, text = truncate_name(item), image = icon, compound = "top", command = lambda p=full_path: on_item_click(p), height = 80, width = 80, background = "#f0f0f0", borderwidth = 0)
             button.image = icon
             button.bind("<Enter>", lambda event, tooltip = item: self.show_tooltip(tooltip))
-            button.bind("<Leave>", self.hide_tooltip)
+            button.bind("<Leave>", lambda event: self.hide_tooltip())
             button.grid(row = idx // 5, column = idx % 5, padx = 12, pady = 10)
 
     def action_rename(self, old_name, new_name):
@@ -134,6 +136,7 @@ class FileSense(tk.Tk):
         self.update_explorer(self.current_path)
 
     def update_file(self, full_path):
+        self.current_file = full_path
         _, _, file_extension = FileSenseHelper.split_full_path(full_path)
 
         if file_extension.lower() in SUPPORTED_FILE_EXTENSIONS:
@@ -218,6 +221,8 @@ class FileSense(tk.Tk):
                 _animation = _animation[-1] + _animation[:-1]
                 self.var_animation.set(_animation)
             else:
+                if thread.full_path != self.current_file:
+                    return
                 if hasattr(thread, 'response'):
                     payload = json_repair.repair_json(thread.response, return_objects=True)
                     self.update_summary(payload["summary"])
@@ -225,6 +230,9 @@ class FileSense(tk.Tk):
                 else:
                     self.update_summary("Met some issues, not available to generate summary this time.")
                     self.update_sense("[]", thread.full_path)
+                payload = json_repair.repair_json(thread.response, return_objects=True)
+                self.update_summary(payload["summary"])
+                self.update_sense(payload["actions"], thread.full_path)
 
         self.geometry("1440x1040")
         self.update_summary_sense_loading()

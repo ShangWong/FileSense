@@ -1,7 +1,6 @@
 import os
 import dotenv
 from openai import OpenAI
-from preprocessor import Preprocessor
 
 dotenv.load_dotenv()
 
@@ -45,7 +44,7 @@ def summarize_document(document_content):
                 "content": prompt,
             }
         ],
-        model="gpt-4o-mini",
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
     )
 
     # Extract and print the summary
