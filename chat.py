@@ -12,10 +12,7 @@ if model_type == "offline":
     print("Accessing offline Phi3 model, functionalities could be limited.")
     running_model = "phi3"
 
-client = OpenAI(
-    base_url = 'http://localhost:1234/v1',
-    api_key = 'phi3'
-)
+client = OpenAI()
 
 def trim_document_content(document_content, max_chars=10000):
     """
