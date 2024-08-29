@@ -230,9 +230,6 @@ class FileSense(tk.Tk):
                 else:
                     self.update_summary("Met some issues, not available to generate summary this time.")
                     self.update_sense("[]", thread.full_path)
-                payload = json_repair.repair_json(thread.response, return_objects=True)
-                self.update_summary(payload["summary"])
-                self.update_sense(payload["actions"], thread.full_path)
 
         self.geometry("1440x1040")
         self.update_summary_sense_loading()
