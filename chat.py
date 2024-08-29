@@ -4,8 +4,18 @@ from openai import OpenAI
 from preprocessor import Preprocessor
 
 dotenv.load_dotenv()
+running_model = "gpt-4o-mini"
 
-client = OpenAI()
+model_type = os.getenv("MODEL_TYPE", "offline")
+
+if model_type == "offline":
+    print("Accessing offline Phi3 model, functionalities could be limited.")
+    running_model = "phi3"
+
+client = OpenAI(
+    base_url = 'http://localhost:1234/v1',
+    api_key = 'phi3'
+)
 
 def trim_document_content(document_content, max_chars=10000):
     """
@@ -23,10 +33,11 @@ def summarize_document(document_content):
 
     # Define the prompt for summarization
     basicTone = """You are a professional file handler.
-    You must return your handling result in a json format.
+    You must return your handling result in a strict json format with double quotes. Don't include comments in the return result.
     The json you returned must contain the following 2 properties.
     1) summary
     2) actions
+    We only support items in ["renaming", "mail"] as properties in actions.
     """
     prompt = """
 You will read a file, you will give a short summary (up to 200 words), and give next possible actions in an array format.
@@ -42,36 +53,6 @@ You would return the response in the following example format. Please return a p
         {
             "action": "renaming",
             "suggest": "2024_10_New_Zealand_Travel_Itinerary"
-        },
-        {
-            "action": "todo",
-            "suggest": {
-                "status": "Pending",
-                "title": "Book Hotels in Rotorua and Wellington",
-                "importance": "High",
-                "isReminderOn": true,
-                "categories": ["Travel", "Accommodation"]
-            }
-        },
-        {
-            "action": "todo",
-            "suggest": {
-                "status": "Pending",
-                "title": "Reserve Rental Car",
-                "importance": "High",
-                "isReminderOn": true,
-                "categories": ["Travel", "Transportation"]
-            }
-        },
-        {
-            "action": "todo",
-            "suggest": {
-                "status": "Pending",
-                "title": "Pack Hiking Gear",
-                "importance": "Medium",
-                "isReminderOn": false,
-                "categories": ["Packing", "Travel"]
-            }
         },
         {
             "action": "mail",
@@ -96,12 +77,11 @@ You would return the response in the following example format. Please return a p
                 "content": prompt,
             }
         ],
-        model="gpt-4o-mini",
+        model=running_model,
     )
 
     # Extract and print the summary
     summary = response.choices[0].message.content
-    print("Summary:\n", summary)
     return summary
 
 # # Specify the path to your document

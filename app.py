@@ -1,4 +1,4 @@
-import os, json, webbrowser
+import os, webbrowser, json_repair, argparse
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 from threading import Thread
@@ -40,6 +40,16 @@ class FileSenseHelper:
 class FileSense(tk.Tk):
     def __init__(self):
         super().__init__()
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--offline", action="store_true", help="Run the app with online/offline LLM model.")
+        args = parser.parse_args()
+
+        if args.offline:
+            os.environ["MODEL_TYPE"] = "offline"
+        else:
+            os.environ["MODEL_TYPE"] = "online"
+
         self.title("File Sense")
         self.geometry("840x1040+40+40")
         self.resizable(False, False)
@@ -131,7 +141,8 @@ class FileSense(tk.Tk):
             self.update_senses(thread.response, thread.full_path)
 
     def update_senses(self, response, full_path):
-        payload = json.loads(response)
+        payload = json_repair.repair_json(response, return_objects=True)
+
         summary = payload["summary"]
         actions = payload["actions"]
 
