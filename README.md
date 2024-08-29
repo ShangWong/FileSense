@@ -15,6 +15,7 @@ pip install -r requirements.txt
     ```txt
     OPENAI_API_KEY=<your_open_ai_key>
     OPENAI_BASE_URL=<if you have a custom endpoint>
+    OPENAI_MODEL=<your model, default is gpt-4o-mini>
     ```
 1. Save the file.
 1. Run:
