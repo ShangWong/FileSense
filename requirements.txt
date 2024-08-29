@@ -6,3 +6,4 @@ pandas
 mammoth
 openpyxl
 json_repair
+msgraph-sdk
