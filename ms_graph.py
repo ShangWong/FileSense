@@ -39,15 +39,3 @@ class Graph:
         except APIError as e:
             print(f"Failed to get task list: {e}")
             raise
-
-# async def main():
-#     graph = Graph()
-#     await graph.create_task("First task!", ["Important"])
-
-# if __name__ == "__main__":
-#     loop = asyncio.new_event_loop()
-#     asyncio.set_event_loop(loop)
-#     try:
-#         loop.run_until_complete(main())
-#     finally:
-#         loop.close()
