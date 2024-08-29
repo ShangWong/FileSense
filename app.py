@@ -1,4 +1,4 @@
-import os, json, webbrowser
+import os, json_repair, webbrowser
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 from threading import Thread
@@ -218,7 +218,7 @@ class FileSense(tk.Tk):
                 _animation = _animation[-1] + _animation[:-1]
                 self.var_animation.set(_animation)
             else:
-                payload = json.loads(thread.response)
+                payload = json_repair.repair_json(thread.response, return_objects=True)
                 self.update_summary(payload["summary"])
                 self.update_sense(payload["actions"], thread.full_path)
 
