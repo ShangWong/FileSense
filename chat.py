@@ -1,6 +1,6 @@
+import os
 import dotenv
 from openai import OpenAI
-from preprocessor import Preprocessor
 
 dotenv.load_dotenv()
 
