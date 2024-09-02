@@ -27,6 +27,7 @@ def trim_document_content(document_content, max_chars=10000):
 
 
 def summarize_document(document_content):
+    CHAT_LOGGER.info("Start summarizing the document...")
     trimmed_content = trim_document_content(document_content)
 
     # Define the prompt for summarization
@@ -52,4 +53,5 @@ def summarize_document(document_content):
 
     # Extract and print the summary
     summary = response.choices[0].message.content
+    CHAT_LOGGER.info("Document was summarized successfully.")
     return summary

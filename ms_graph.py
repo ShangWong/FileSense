@@ -27,8 +27,11 @@ class Graph:
             categories=categories
         )
         try:
+            GRAPH_LOGGER.info("Start to create task...")
             default_task_list_id = await self.get_default_task_list_id()
-            return await self._graph_client.me.todo.lists.by_todo_task_list_id(default_task_list_id).tasks.post(request_body)
+            task = await self._graph_client.me.todo.lists.by_todo_task_list_id(default_task_list_id).tasks.post(request_body)
+            GRAPH_LOGGER.info("Task created successfully.")
+            return task
         except APIError as e:
             GRAPH_LOGGER.error(f"Failed to create task: {e}")
             raise
