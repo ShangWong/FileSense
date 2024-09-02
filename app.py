@@ -180,7 +180,7 @@ class FileSense(tk.Tk):
     def start_graph_thread(self, suggest):
         global graph_thread
         if graph_thread is None or not graph_thread.is_alive():
-            graph_thread = Thread(target = self.action_create_todo, args = (suggest))
+            graph_thread = Thread(target = lambda suggest = suggest: self.action_create_todo(suggest))
             graph_thread.start()
 
     def action_create_todo(self, suggest): 
