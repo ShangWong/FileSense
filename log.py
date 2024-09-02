@@ -1,14 +1,14 @@
 import logging
 import threading
 
-_logger_initialized = False
-_logger_lock = threading.Lock()
+_LOGGER_INITIALIZED = False
+_LOGGER_LOCK = threading.Lock()
 
 def get_logger(name: str) -> logging.Logger:
-    global _logger_initialized
+    global _LOGGER_INITIALIZED
     
-    with _logger_lock:
-        if not _logger_initialized:
+    with _LOGGER_LOCK:
+        if not _LOGGER_INITIALIZED:
             # Set up handlers and formatters
             stream_handler = logging.StreamHandler()
             formatter = logging.Formatter('[%(asctime)s][%(name)s][%(levelname)s]%(message)s')
@@ -23,7 +23,7 @@ def get_logger(name: str) -> logging.Logger:
             root_logger.addHandler(file_handler)
             root_logger.setLevel(logging.INFO)
 
-            _logger_initialized = True
+            _LOGGER_INITIALIZED = True
 
     # Get and return the logger with the requested name
     return logging.getLogger(name)
