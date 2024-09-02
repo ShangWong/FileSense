@@ -7,11 +7,15 @@ from PIL import Image, ImageTk
 from chat import summarize_document
 from preprocessor import Preprocessor
 from ms_graph import Graph
+from log import get_logger
 
 graph_thread = None
 
 SUPPORTED_FILE_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]
 THREAD_CHECK_INTERVAL = 100 # millisecond
+
+UI_LOGGER = get_logger("UI")
+
 
 class AsyncChat(Thread):
     def __init__(self, full_path, content):
@@ -217,7 +221,7 @@ class FileSense(tk.Tk):
                     button_text = "Rename"
                     button_command = lambda old_name = full_path, new_name = new_name: self.action_rename(old_name, new_name)
                 case _:
-                    print("Invalid action {}, please check".format(_action))
+                    UI_LOGGER.error("Invalid action {}, please check".format(_action))
                     continue
 
             _frame = tk.Frame(self.labelframe_sense)
@@ -238,8 +242,15 @@ class FileSense(tk.Tk):
                     return
                 if hasattr(thread, 'response'):
                     payload = json_repair.repair_json(thread.response, return_objects=True)
-                    self.update_summary(payload["summary"])
-                    self.update_sense(payload["actions"], thread.full_path)
+                    if "summary" in payload:
+                        self.update_summary(payload["summary"])
+                    else:
+                        UI_LOGGER.warning("No summary found in response")
+
+                    if "actions" in payload:
+                        self.update_sense(payload["actions"], thread.full_path)
+                    else:
+                        UI_LOGGER.warning("No actions found in response")
                 else:
                     self.update_summary("Met some issues, not available to generate summary this time.")
                     self.update_sense("[]", thread.full_path)

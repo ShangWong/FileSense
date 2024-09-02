@@ -1,10 +1,13 @@
 import os
 import dotenv
 from openai import OpenAI
+from log import get_logger
 
 dotenv.load_dotenv()
 
 client = OpenAI()
+
+CHAT_LOGGER = get_logger("chat")
 
 def load_prompt(file_path):
     # Loads the prompt from a text file.
@@ -12,10 +15,10 @@ def load_prompt(file_path):
         with open(file_path, 'r') as file:
             return file.read()
     except FileNotFoundError:
-        print(f"Error: The file {file_path} was not found.")
+        CHAT_LOGGER.error(f"Error: The file {file_path} was not found.")
         return ""
     except Exception as e:
-        print(f"Error: An error occurred while reading the file {file_path}. {e}")
+        CHAT_LOGGER.error(f"Error: An error occurred while reading the file {file_path}. {e}")
         return ""
 
 def trim_document_content(document_content, max_chars=10000):
