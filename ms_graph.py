@@ -1,12 +1,16 @@
 import os
+
 import dotenv
-import asyncio
 from azure.identity import InteractiveBrowserCredential
 from msgraph import GraphServiceClient
 from msgraph.generated.models.todo_task import TodoTask
 from kiota_abstractions.api_error import APIError
 
+from log import get_logger
+
 dotenv.load_dotenv()
+
+GRAPH_LOGGER = get_logger("graph")
 
 
 class Graph:
@@ -23,10 +27,13 @@ class Graph:
             categories=categories
         )
         try:
+            GRAPH_LOGGER.info("Start to create task...")
             default_task_list_id = await self.get_default_task_list_id()
-            return await self._graph_client.me.todo.lists.by_todo_task_list_id(default_task_list_id).tasks.post(request_body)
+            task = await self._graph_client.me.todo.lists.by_todo_task_list_id(default_task_list_id).tasks.post(request_body)
+            GRAPH_LOGGER.info("Task created successfully.")
+            return task
         except APIError as e:
-            print(f"Failed to create task: {e}")
+            GRAPH_LOGGER.error(f"Failed to create task: {e}")
             raise
 
     async def get_default_task_list_id(self):
@@ -37,5 +44,5 @@ class Graph:
         try:
             return await self._graph_client.me.todo.lists.get()
         except APIError as e:
-            print(f"Failed to get task list: {e}")
+            GRAPH_LOGGER.error(f"Failed to get task list: {e}")
             raise
