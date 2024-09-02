@@ -1,4 +1,4 @@
-import os, json_repair, webbrowser
+import os, json_repair, webbrowser, asyncio
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 from threading import Thread
@@ -6,6 +6,9 @@ from PIL import Image, ImageTk
 
 from chat import summarize_document
 from preprocessor import Preprocessor
+from ms_graph import Graph
+
+graph_thread = None
 
 SUPPORTED_FILE_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]
 THREAD_CHECK_INTERVAL = 100 # millisecond
@@ -36,7 +39,7 @@ class FileSenseHelper:
                 return file_extension[1:].lower()
             return "file"
 
-        return ImageTk.PhotoImage(Image.open("./resources/{}.png".format(get_icon_name_without_extension())).resize((60, 60)))
+        return ImageTk.PhotoImage(Image.open("./resources/icons/{}.png".format(get_icon_name_without_extension())).resize((60, 60)))
 
 class FileSense(tk.Tk):
     def __init__(self):
@@ -46,6 +49,7 @@ class FileSense(tk.Tk):
         self.resizable(False, False)
 
         # Init variables
+        self.graph_client = Graph()
         self.current_path = os.getcwd()
         self.current_file = None
         self.var_address = tk.StringVar()
@@ -94,14 +98,14 @@ class FileSense(tk.Tk):
         self.tooltip_window.geometry("+{}+{}".format(x, y))
 
     def hide_tooltip(self):
-        self.tooltip_window.destroy()
-        self.tooltip_window = None
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
 
     def update_explorer(self, path):
 
         def on_item_click(path):
-            if self.tooltip_window:
-                self.hide_tooltip()
+            self.hide_tooltip()
             if os.path.isdir(path):
                 self.update_explorer(path)
             else:
@@ -130,10 +134,6 @@ class FileSense(tk.Tk):
             button.bind("<Enter>", lambda event, tooltip = item: self.show_tooltip(tooltip))
             button.bind("<Leave>", lambda event: self.hide_tooltip())
             button.grid(row = idx // 5, column = idx % 5, padx = 12, pady = 10)
-
-    def action_rename(self, old_name, new_name):
-        os.rename(old_name, new_name)
-        self.update_explorer(self.current_path)
 
     def update_file(self, full_path):
         self.current_file = full_path
@@ -172,6 +172,19 @@ class FileSense(tk.Tk):
         scrolledtext_summary.insert(tk.END, summary)
         scrolledtext_summary.configure(state = tk.DISABLED)
         scrolledtext_summary.pack()
+    
+    def action_rename(self, old_name, new_name):
+        os.rename(old_name, new_name)
+        self.update_explorer(self.current_path)
+
+    def start_graph_thread(self, suggest):
+        global graph_thread
+        if graph_thread is None or not graph_thread.is_alive():
+            graph_thread = Thread(target = lambda suggest = suggest: self.action_create_todo(suggest))
+            graph_thread.start()
+
+    def action_create_todo(self, suggest): 
+        asyncio.run(Graph().create_task(suggest.get("title", ""), suggest.get("categories", [])))
 
     def update_sense(self, actions, full_path):
         for widget in self.labelframe_sense.winfo_children():
@@ -194,7 +207,7 @@ class FileSense(tk.Tk):
                 case "todo":
                     action_text = "• Create TODO item \"{}\"".format(suggest.get("title",""))
                     button_text = "Create"
-                    # button_command = lambda : webbrowser.open("https://to-do.office.com/")
+                    button_command = lambda suggest = suggest: self.start_graph_thread(suggest)
                 case "renaming":
                     directory_name, file_name_without_extension, file_extension = FileSenseHelper.split_full_path(full_path)
                     if file_name_without_extension == suggest:
