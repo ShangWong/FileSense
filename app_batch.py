@@ -4,6 +4,9 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 from threading import Thread
 
+from chat import get_document_suggest_naming
+from preprocessor import Preprocessor
+
 SUPPORTED_FILE_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]
 STATUS_SUPPORTED_FILE_EXTENSIONS = [".xlsx"]
 THREAD_CHECK_INTERVAL = 100 # millisecond
@@ -18,11 +21,11 @@ class Status:
 
 # Async Call get suggest naming
 class AsyncCall(Thread):
-    def __init__(self, full_path):
+    def __init__(self, content):
         super().__init__()
+        self.content = content
     def run(self):
-        time.sleep(random.randint(5,10))
-        self.response = "new name"
+        self.response = get_document_suggest_naming(self.content)
 
 class FileSenseHelper:
     @staticmethod
@@ -119,6 +122,7 @@ class FileSense(tk.Tk):
         self.update_batch_files()
 
     def update_batch_files(self):
+        self.log("Update batch files")
         for widget in self.frame_batch_files.winfo_children():
             widget.destroy()
         for idx, file in enumerate(self.batch_files):
@@ -143,8 +147,9 @@ class FileSense(tk.Tk):
             else:
                 tk.Label(frame_batch_file, text = self.map_async_tasks[file], compound = "top", height = 2, width = 50, background = COLOR_TRANSPARENT, borderwidth = 0, anchor = "w")\
                     .place(x = 130, y = 50)
-                tk.Label(frame_batch_file, text = "Regenerate", compound = "top", height = 2, width = 15, background = COLOR_TRANSPARENT, borderwidth = 0, anchor = "w")\
-                    .place(x = 320, y = 50)
+                button_regenerate = tk.Label(frame_batch_file, text = "Regenerate", compound = "top", height = 2, width = 15, background = COLOR_TRANSPARENT, borderwidth = 0, anchor = "w")
+                button_regenerate.place(x = 320, y = 50)
+                button_regenerate.bind("<Button-1>", lambda event, file = file: self.get_suggest_naming(file, force = True))
 
     def toggle_logging_window(self, event):
         if self.window_log is None:
@@ -230,17 +235,22 @@ class FileSense(tk.Tk):
             return
         self.update_explorer(path)
 
-    def get_suggest_naming(self, full_path):
+    def get_suggest_naming(self, full_path, force = False):
         def monitor_thread(thread):
             if thread.is_alive():
                 self.after(THREAD_CHECK_INTERVAL, lambda: monitor_thread(thread))
             else:
+                self.log("Thread finished, get suggest naming {} for file\n {}".format(thread.response, full_path))
                 self.map_async_tasks[full_path] = thread.response
                 self.update_batch_files()
 
-        if self.map_async_tasks.get(full_path, None) != None:
+        if not force and self.map_async_tasks.get(full_path, None) != None:
             return
-        thread = AsyncCall(full_path)
+        if force:
+            self.map_async_tasks.pop(full_path)
+            self.update_batch_files()
+        content = Preprocessor.create(full_path).process()
+        thread = AsyncCall(content)
         thread.start()
         monitor_thread(thread)
 

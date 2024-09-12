@@ -25,6 +25,34 @@ def trim_document_content(document_content, max_chars=10000):
     # Trim the content to the first max_chars characters
     return document_content[:max_chars]
 
+def get_document_suggest_naming(document_content):
+    CHAT_LOGGER.info("Start summarizing the document...")
+    trimmed_content = trim_document_content(document_content)
+
+    # Define the prompt for summarization
+    basicTone = load_prompt("./resources/prompts/basic_tone_naming.txt")
+    prompt = load_prompt("./resources/prompts/online_naming.txt")
+
+    prompt += f"Now handle this doc:\n\n{trimmed_content}.\n\n"
+
+    # Call the OpenAI API to get the summary
+    response = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": basicTone,
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+    )
+
+    suggest_name = response.choices[0].message.content
+    CHAT_LOGGER.info("Get the suggest naming of Document successfully.")
+    return suggest_name
 
 def summarize_document(document_content):
     CHAT_LOGGER.info("Start summarizing the document...")
