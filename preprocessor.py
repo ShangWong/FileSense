@@ -1,10 +1,13 @@
 import os
+import io
+import base64
 from dataclasses import dataclass
 from enum import Enum
 
 import fitz
 import pandas as pd
 import mammoth
+from PIL import Image
 
 
 def _get_file_extension(file_path: str):
@@ -36,14 +39,16 @@ class Preprocessor:
     @classmethod
     def create(cls, file_path: str):
         ext = _get_file_extension(file_path)
-        if ext in ("txt", "py", "ini", "md"):
+        if ext in {"txt", "py", "ini", "md"}:
             return TxtPreprocessor(file_path)
         elif ext == "pdf":
             return PdfPreprocessor(file_path)
-        elif ext in ("xls", "xlsx"):
+        elif ext in {"xls", "xlsx"}:
             return XlsPreprocessor(file_path)
-        elif ext in ("doc", "docx"):
+        elif ext in {"doc", "docx"}:
             return DocPreprocessor(file_path)
+        elif ext in {"png", "gif", "jpg", "jpeg", "bmp"}:
+            return ImagePreprocessor(file_path)
         else:
             raise NotImplementedError(
                 f"Preprocessor for {ext} is not implemented.")
@@ -102,3 +107,23 @@ class DocPreprocessor(Preprocessor):
         return PreprocessedFile(original_name=os.path.basename(self.file_path),
                                 file_type=FileType.TEXT,
                                 content=markdown.replace("\n", " "))
+
+
+class ImagePreprocessor(Preprocessor):
+    def __init__(self, file_path: str):
+        super().__init__(file_path)
+
+    def process(self) -> PreprocessedFile:
+            with Image.open(self.file_path) as img:
+            # Convert the image to bytes
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='PNG')  # You can change the format if needed
+                img_byte_arr = img_byte_arr.getvalue()
+
+                # Convert the image bytes to a base64 encoded string
+                base64_encoded = base64.b64encode(img_byte_arr).decode('utf-8')
+
+                return PreprocessedFile(original_name=os.path.basename(self.file_path),
+                                        file_type=FileType.IMAGE,
+                                        content=base64_encoded)
+
