@@ -2,12 +2,19 @@ import os
 import dotenv
 from openai import OpenAI
 from log import get_logger
+from dataclasses import dataclass
 
 dotenv.load_dotenv()
 
 client = OpenAI()
 
 CHAT_LOGGER = get_logger("chat")
+
+@dataclass
+class LLMResponse:
+    isOriginTitleUsable: bool
+    proposedTitle: str
+    summary: str
 
 def load_prompt(file_path):
     # Loads the prompt from a text file.
@@ -33,7 +40,7 @@ def get_document_suggest_naming(document_content):
     basicTone = load_prompt("./resources/prompts/basic_tone_naming.txt")
     prompt = load_prompt("./resources/prompts/online_naming.txt")
 
-    prompt += f"Now handle this doc:\n\n{trimmed_content}.\n\n"
+    prompt += f"Now handle this file:\n\n{trimmed_content}.\n\n"
 
     # Call the OpenAI API to get the summary
     response = client.chat.completions.create(

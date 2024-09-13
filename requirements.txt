@@ -7,3 +7,4 @@ mammoth
 openpyxl
 json_repair
 msgraph-sdk
+dataclasses

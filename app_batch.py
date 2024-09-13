@@ -250,8 +250,7 @@ class FileSense(tk.Tk):
             self.map_async_tasks.pop(full_path)
             self.update_batch_files()
         content = Preprocessor.create(full_path).process()
-        extractedContent = content.replace('\n', ' ').strip()
-        thread = AsyncCall(extractedContent)
+        thread = AsyncCall(content.content)
         thread.start()
         monitor_thread(thread)
 
