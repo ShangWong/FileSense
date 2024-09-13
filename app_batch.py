@@ -7,7 +7,7 @@ from threading import Thread
 from chat import get_document_suggest_naming
 from preprocessor import Preprocessor
 
-SUPPORTED_FILE_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]
+SUPPORTED_FILE_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md", ".png", ".gif", ".jpg", ".jpeg", ".bmp"]
 STATUS_SUPPORTED_FILE_EXTENSIONS = [".xlsx"]
 THREAD_CHECK_INTERVAL = 100 # millisecond
 COLOR_TRANSPARENT = "#f0f0f0"
@@ -100,7 +100,7 @@ class FileSense(tk.Tk):
         self.labelframe_sense = tk.LabelFrame(self.frame_senses, text = "Sense", height = 400, width = 800)
         self.labelframe_sense.pack(side = tk.BOTTOM, fill = tk.BOTH, expand = True)
 
-    
+
     def init_batch(self):
         self.labelframe_batch = tk.LabelFrame(self, text = "Batch Renaming", height = 1000, width = 600)
         self.labelframe_batch.place(x = 640, y = 20)
@@ -171,7 +171,7 @@ class FileSense(tk.Tk):
             messagebox.showerror("Error", "You do not have permission to access this folder.")
             return
         self.show_items(path, items)
-        
+
     def show_items(self, path, items):
         def drag_start(event):
             self.log("Drag start")
@@ -193,7 +193,7 @@ class FileSense(tk.Tk):
                 self.canvas_drop_zone.destroy()
                 self.canvas_drop_zone = None
             event.widget.place(x = event.widget.x, y = event.widget.y)
-            if event.widget.winfo_x() > 10 and event.widget.winfo_x() < 550 and event.widget.winfo_y() > 710 and event.widget.winfo_y() < 900:    
+            if event.widget.winfo_x() > 10 and event.widget.winfo_x() < 550 and event.widget.winfo_y() > 710 and event.widget.winfo_y() < 900:
                 if full_path not in self.batch_files:
                     self.batch_files.append(full_path)
                     self.get_suggest_naming(full_path)
@@ -223,7 +223,7 @@ class FileSense(tk.Tk):
             if os.path.isdir(full_path):
                 label.bind("<Button-1>", lambda event, path = full_path: on_item_click(path))
             label.place(x = (idx % 5) * 110, y = (idx // 5) * 110)
-    
+
     def update_address(self, path):
         self.log("Update address to {}".format(self.var_address.get()))
         path = self.var_address.get()
@@ -250,7 +250,7 @@ class FileSense(tk.Tk):
             self.map_async_tasks.pop(full_path)
             self.update_batch_files()
         content = Preprocessor.create(full_path).process()
-        thread = AsyncCall(content.content)
+        thread = AsyncCall(content)
         thread.start()
         monitor_thread(thread)
 
