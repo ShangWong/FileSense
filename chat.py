@@ -3,6 +3,7 @@ import dotenv
 from openai import OpenAI
 from log import get_logger
 from dataclasses import dataclass
+from preprocessor import FileType, PreprocessedFile
 
 dotenv.load_dotenv()
 
@@ -28,13 +29,12 @@ def load_prompt(file_path):
         CHAT_LOGGER.error(f"Error: An error occurred while reading the file {file_path}. {e}")
         return ""
 
-def trim_document_content(document_content, max_chars=10000):
+def trim_document_content(document_content: str, max_chars=10000):
     # Trim the content to the first max_chars characters
     return document_content[:max_chars]
 
-def get_document_suggest_naming(document_content):
-    CHAT_LOGGER.info("Start summarizing the document...")
-    trimmed_content = trim_document_content(document_content)
+def create_text_messages(content):
+    trimmed_content = trim_document_content(content)
 
     # Define the prompt for summarization
     basicTone = load_prompt("./resources/prompts/basic_tone_naming.txt")
@@ -42,18 +42,59 @@ def get_document_suggest_naming(document_content):
 
     prompt += f"Now handle this file:\n\n{trimmed_content}.\n\n"
 
+    return [
+        {
+            "role": "system",
+            "content": basicTone,
+        },
+        {
+            "role": "user",
+            "content": prompt,
+        }
+    ]
+
+def create_image_messages(image_base64):
+    # Define the prompt for summarization
+    basicTone = load_prompt("./resources/prompts/basic_tone_naming.txt")
+    prompt = load_prompt("./resources/prompts/online_naming.txt")
+
+    prompt += f"You will be given a image, now give this image a new name."
+
+    return [
+        {
+            "role": "system",
+            "content": basicTone,
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": prompt
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}"
+                    }
+                }
+            ]
+        }
+    ]
+
+def get_document_suggest_naming(document_content: PreprocessedFile):
+    CHAT_LOGGER.info("Start generating the new file name...")
+    if document_content.file_type == FileType.TEXT:
+        messages = create_text_messages(document_content.content)
+    elif document_content.file_type == FileType.IMAGE:
+        messages = create_image_messages(document_content.content)
+    else:
+        CHAT_LOGGER.error(f"Unknown file type: {document_content.file_type}. New name generation request won't be sent.")
+        return ""
+
     # Call the OpenAI API to get the summary
     response = client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": basicTone,
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
+        messages=messages,
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
     )
 

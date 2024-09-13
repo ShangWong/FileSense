@@ -11,7 +11,7 @@ from log import get_logger
 
 graph_thread = None
 
-SUPPORTED_FILE_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]
+SUPPORTED_FILE_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md", ".png", ".gif", ".jpg", ".jpeg", ".bmp"]
 THREAD_CHECK_INTERVAL = 100 # millisecond
 
 UI_LOGGER = get_logger("UI")
@@ -176,7 +176,7 @@ class FileSense(tk.Tk):
         scrolledtext_summary.insert(tk.END, summary)
         scrolledtext_summary.configure(state = tk.DISABLED)
         scrolledtext_summary.pack()
-    
+
     def action_rename(self, old_name, new_name):
         os.rename(old_name, new_name)
         self.update_explorer(self.current_path)
@@ -187,7 +187,7 @@ class FileSense(tk.Tk):
             graph_thread = Thread(target = lambda suggest = suggest: self.action_create_todo(suggest))
             graph_thread.start()
 
-    def action_create_todo(self, suggest): 
+    def action_create_todo(self, suggest):
         asyncio.run(Graph().create_task(suggest.get("title", ""), suggest.get("categories", [])))
 
     def update_sense(self, actions, full_path):

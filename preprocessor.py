@@ -7,7 +7,6 @@ from enum import Enum
 import fitz
 import pandas as pd
 import mammoth
-from PIL import Image
 
 
 def _get_file_extension(file_path: str):
@@ -114,16 +113,8 @@ class ImagePreprocessor(Preprocessor):
         super().__init__(file_path)
 
     def process(self) -> PreprocessedFile:
-            with Image.open(self.file_path) as img:
-            # Convert the image to bytes
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='PNG')  # You can change the format if needed
-                img_byte_arr = img_byte_arr.getvalue()
-
-                # Convert the image bytes to a base64 encoded string
-                base64_encoded = base64.b64encode(img_byte_arr).decode('utf-8')
-
-                return PreprocessedFile(original_name=os.path.basename(self.file_path),
-                                        file_type=FileType.IMAGE,
-                                        content=base64_encoded)
-
+        with open(self.file_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            return PreprocessedFile(original_name=os.path.basename(self.file_path),
+                                    file_type=FileType.IMAGE,
+                                    content=encoded_string)
