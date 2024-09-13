@@ -15,9 +15,9 @@ COLOR_TRANSPARENT = "#f0f0f0"
 MAX_BATCH_FILES_COUNT = 7
 
 class Status:
-    Normal = 0,
-    Loading = 1,
-    Loaded = 2
+    Normal = "normal"
+    Loading = "loading"
+    Loaded = "loaded"
 
 # Async Call get suggest naming
 class AsyncCall(Thread):
@@ -250,7 +250,8 @@ class FileSense(tk.Tk):
             self.map_async_tasks.pop(full_path)
             self.update_batch_files()
         content = Preprocessor.create(full_path).process()
-        thread = AsyncCall(content)
+        extractedContent = content.replace('\n', ' ').strip()
+        thread = AsyncCall(extractedContent)
         thread.start()
         monitor_thread(thread)
 
