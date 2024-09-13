@@ -25,3 +25,14 @@ pip install -r requirements.txt
     ```powershell
     python .\app.py
     ```
+
+## Run with offline models
+
+Use following template 
+1. Change the model name to align with local running model.
+1. Change the port to align with local server.
+```txt
+OPENAI_API_KEY='phi3.5'
+OPENAI_BASE_URL='http://localhost:11434/v1'
+OPENAI_MODEL='phi3.5'
+```

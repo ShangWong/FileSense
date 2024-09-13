@@ -1,0 +1,10 @@
+You will read a file, and give the best filename suggestion.
+
+For example,
+1) For a travel plan file, you would return "Travel plan". You could include location, date, or other key information that would help user identify the file faster and more easily.
+2) For a visa application form, you would return "Visa Application". You should include the country name and visa type if possible.
+3) For a shopping invoice, you would return "Shopping Invoice", better include the purchased product name(for example, iPhone), purchase date.
+
+Your return should be a string, which only contains proposed filename.
+The filename should not include reserved characters in [* " / \ < > : | ? ( )].
+In general, the proposed naming should be limited to 50 characters or less.
