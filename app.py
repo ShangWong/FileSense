@@ -6,7 +6,6 @@ from PIL import Image, ImageTk
 
 from chat import summarize_document
 from preprocessor import Preprocessor
-from ms_graph import Graph
 from log import get_logger
 
 graph_thread = None
@@ -53,7 +52,6 @@ class FileSense(tk.Tk):
         self.resizable(False, False)
 
         # Init variables
-        self.graph_client = Graph()
         self.current_path = os.getcwd()
         self.current_file = None
         self.var_address = tk.StringVar()
@@ -188,7 +186,7 @@ class FileSense(tk.Tk):
             graph_thread.start()
 
     def action_create_todo(self, suggest):
-        asyncio.run(Graph().create_task(suggest.get("title", ""), suggest.get("categories", [])))
+        pass
 
     def update_sense(self, actions, full_path):
         for widget in self.labelframe_sense.winfo_children():
