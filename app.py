@@ -9,7 +9,6 @@ from enum import Enum
 from chat import get_document_suggest_naming, get_folder_suggest_naming
 from preprocessor import Preprocessor
 
-
 SUPPORTED_TEXT_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]
 SUPPORTED_IMG_EXTENSIONS = [".png", ".gif", ".jpg", ".jpeg", ".bmp"]
 SUPPORTED_FILE_EXTENSIONS = SUPPORTED_TEXT_EXTENSIONS + SUPPORTED_IMG_EXTENSIONS

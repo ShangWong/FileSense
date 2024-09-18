@@ -9,7 +9,7 @@ import pandas as pd
 import mammoth
 
 
-def _get_file_extension(file_path: str):
+def get_file_extension(file_path: str):
     # Use os.path.splitext to split the file path into the base name and the extension
     _, file_extension = os.path.splitext(file_path)
     # Return the file extension without the leading dot
@@ -37,7 +37,7 @@ class Preprocessor:
 
     @classmethod
     def create(cls, file_path: str):
-        ext = _get_file_extension(file_path)
+        ext = get_file_extension(file_path)
         if ext in {"txt", "py", "ini", "md"}:
             return TxtPreprocessor(file_path)
         elif ext == "pdf":
