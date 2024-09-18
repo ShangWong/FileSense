@@ -3,7 +3,7 @@ import dotenv
 from openai import OpenAI
 from log import get_logger
 from dataclasses import dataclass
-from preprocessor import FileType, PreprocessedFile
+from preprocessor import FileType, PreprocessedFile, get_file_extension
 
 dotenv.load_dotenv()
 
@@ -33,8 +33,8 @@ def trim_document_content(document_content: str, max_chars=10000):
     # Trim the content to the first max_chars characters
     return document_content[:max_chars]
 
-def create_text_messages(content):
-    trimmed_content = trim_document_content(content)
+def create_text_messages(document_content: PreprocessedFile):
+    trimmed_content = trim_document_content(document_content.content)
 
     # Define the prompt for summarization
     basic_tone = load_prompt("./resources/prompts/basic_tone_naming.txt")
@@ -53,12 +53,16 @@ def create_text_messages(content):
         }
     ]
 
-def create_image_messages(image_base64):
+def create_image_messages(document_content: PreprocessedFile):
     # Define the prompt for summarization
     basic_tone = load_prompt("./resources/prompts/basic_tone_naming.txt")
     prompt = load_prompt("./resources/prompts/online_naming.txt")
 
-    prompt += f"You will be given a image, now give this image a new name."
+    prompt += f"You will be given an image, now give this image a new name."
+
+    image_type = get_file_extension(document_content.original_name)
+    if image_type == "jpg":
+        image_type = "jpeg"
 
     return [
         {
@@ -75,7 +79,7 @@ def create_image_messages(image_base64):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_base64}"
+                        "url": f"data:image/{image_type};base64,{document_content.content}"
                     }
                 }
             ]
@@ -110,9 +114,9 @@ def get_folder_suggest_naming(file_names: list[str]) -> str:
 def get_document_suggest_naming(document_content: PreprocessedFile):
     CHAT_LOGGER.info("Start generating the new file name...")
     if document_content.file_type == FileType.TEXT:
-        messages = create_text_messages(document_content.content)
+        messages = create_text_messages(document_content)
     elif document_content.file_type == FileType.IMAGE:
-        messages = create_image_messages(document_content.content)
+        messages = create_image_messages(document_content)
     else:
         CHAT_LOGGER.error(f"Unknown file type: {document_content.file_type}. New name generation request won't be sent.")
         return ""
