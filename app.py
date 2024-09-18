@@ -89,7 +89,6 @@ class BatchFileHelper:
     @run_async(callback_get_folder_suggest_name)
     def get_folder_suggest_name(file_names, entry, variable):
         entry.config(state = tk.DISABLED)
-        time.sleep(1)
         return [variable, entry, get_folder_suggest_naming(file_names)]
 
 class FileSenseHelper:
