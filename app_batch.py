@@ -1,4 +1,4 @@
-import os, time, random
+import os, time, asyncio, re
 import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
@@ -17,7 +17,7 @@ SUPPORTED_FILE_EXTENSIONS = SUPPORTED_TEXT_EXTENSIONS + SUPPORTED_IMG_EXTENSIONS
 # TODO: Add more supported extensions
 STATUS_SUPPORTED_EXTENSIONS = [".xlsx"]
 
-THREAD_CHECK_INTERVAL = 100 # millisecond
+THREAD_CHECK_INTERVAL = 500 # millisecond
 
 RESOURCE_ICON_FORMAT = "./resources/icons/{}.png"
 
@@ -26,13 +26,59 @@ class Status(Enum):
     Loading = 2
     Loaded = 3
 
-# Async Call get suggest naming
-class AsyncCall(Thread):
-    def __init__(self, content):
-        super().__init__()
-        self.content = content
-    def run(self):
-        self.response = get_document_suggest_naming(self.content)
+def run_async(callback):
+    def inner(func):
+        def wrapper(*args, **kwargs):
+            def __exec():
+                out = func(*args, **kwargs)
+                callback(out)
+                return out
+            return asyncio.get_event_loop().run_in_executor(None, __exec)
+        return wrapper
+    return inner
+
+@dataclass
+class BatchFile:
+    full_path: str
+    icon: ImageTk.PhotoImage
+    content: str
+    status: Status
+    suggest_name: str
+    var_new_name: tk.StringVar
+    frame: tk.Frame = None
+    need_update: bool = False
+
+class BatchFileHelper:
+    @staticmethod
+    def from_full_path(full_path: str):
+        return BatchFile(full_path, FileSenseHelper.get_file_icon(full_path), Preprocessor.create(full_path).process(), Status.Normal, None, tk.StringVar())
+
+    @staticmethod
+    def callback_get_get_suggest_name(*args):
+        file, suggest_name = args[0]
+        file.status = Status.Loaded
+
+        # Remove invalid characters for file name
+        suggest_name = re.sub(r'[/:*?"<>|]', '', suggest_name)
+
+        file.suggest_name = suggest_name
+        file.need_update = True
+        file.var_new_name.set(suggest_name)
+        for widget in file.frame.winfo_children():
+            if widget.winfo_x() == 142 and widget.winfo_y() == 47:
+                widget.config(state = tk.NORMAL)
+
+    @staticmethod
+    @run_async(callback_get_get_suggest_name)
+    def get_suggest_name(file: BatchFile):
+        file.status = Status.Loading
+        file.var_new_name.set("Gererating...")
+        if file.frame is not None:
+            for widget in file.frame.winfo_children():
+                if widget.winfo_x() == 142 and widget.winfo_y() == 47:
+                    widget.config(state = tk.DISABLED)
+        file.need_update = True
+        return [file, get_document_suggest_naming(file.content)]
 
 class FileSenseHelper:
     @staticmethod
@@ -42,7 +88,7 @@ class FileSenseHelper:
         return directory_name, file_name_without_extension, file_extension
 
     @staticmethod
-    def get_icon(full_path, status = Status.Normal):
+    def get_file_icon(full_path, status = Status.Normal):
         def get_extension_icon_path():
             if os.path.isdir(full_path):
                 return RESOURCE_ICON_FORMAT.format("folder")
@@ -70,16 +116,15 @@ class FileSense(tk.Tk):
         self.resizable(False, False)
 
         self.window_log = None
+        self.window_tooltip = None
         self.bind("<Control-l>", self.toggle_logging_window)
 
-        # Init variables
         self.current_path = os.getcwd()
         self.var_address = tk.StringVar(value = os.getcwd())
         self.var_theme = tk.StringVar(value = "Travel")
-        self.batch_files = []
+        self.batch_files = {}
         self.map_async_tasks = {}
 
-        # Init frames
         self.init_explorer()
         self.init_batch()
         self.update_explorer(os.getcwd())
@@ -98,17 +143,6 @@ class FileSense(tk.Tk):
         self.frame_files.place(x = 20, y = 60)
         self.canvas_drop_zone = None
 
-    # Wait for migration
-    def init_sense(self):
-        self.frame_senses = tk.Frame(self, height = 1000, width = 800)
-        self.frame_senses.place(x = 640, y = 20)
-        self.labelframe_preview = tk.LabelFrame(self.frame_senses, text = "Preview", height = 400, width = 800)
-        self.labelframe_preview.pack(fill = tk.BOTH, expand = False)
-        self.labelframe_summary = tk.LabelFrame(self.frame_senses, text = "Summary", height = 300, width = 800)
-        self.labelframe_summary.pack(fill = tk.BOTH, expand = True, pady = 20)
-        self.labelframe_sense = tk.LabelFrame(self.frame_senses, text = "Sense", height = 400, width = 800)
-        self.labelframe_sense.pack(side = tk.BOTTOM, fill = tk.BOTH, expand = True)
-
     def init_batch(self):
         self.labelframe_batch = tk.LabelFrame(self, text = "Batch Renaming", height = 1000, width = 600)
         self.labelframe_batch.place(x = 640, y = 20)
@@ -120,53 +154,58 @@ class FileSense(tk.Tk):
         self.frame_batch_files.place(x = 20, y = 60)
         self.checkbox_move = tk.Checkbutton(self.labelframe_batch, text = "Move into folder",  font = ("Arial", 12))
         self.checkbox_move.place(x = 30, y = 800)
-        self.button_confirm = tk.Button(self.labelframe_batch, text = "Confirm", font = ("Arial", 14), width = 48)
+        self.button_confirm = tk.Button(self.labelframe_batch, text = "Confirm", font = ("Arial", 14), width = 48, command = self.rename_batch_files)
         self.button_confirm.place(x = 30, y = 900)
-
-    def remove_batch_file(self, event, file):
-        if file in self.batch_files:
-            self.batch_files.remove(file)
-        if file in self.map_async_tasks.keys():
-            self.map_async_tasks.pop(file)
         self.update_batch_files()
 
+    def show_tooltip(self, tooltip):
+        self.window_tooltip = tk.Toplevel(self)
+        tooltip_label = tk.Label(self.window_tooltip, text = tooltip)
+        tooltip_label.pack()
+        self.window_tooltip.overrideredirect(True)
+        x = self.winfo_pointerx() + 20
+        y = self.winfo_pointery() + 20
+        self.window_tooltip.geometry("+{}+{}".format(x, y))
+
+    def hide_tooltip(self):
+        if self.window_tooltip:
+            self.window_tooltip.destroy()
+            self.window_tooltip = None
+
+    def rename_batch_files(self):
+        self.log("Rename batch files")
+        for file in self.batch_files.values():
+            if file.status != Status.Loaded:
+                messagebox.showerror("Error", "Please wait for all files to be loaded")
+                return
+        _keys = list(self.batch_files.keys())
+        for full_path in _keys:
+            file = self.batch_files[full_path]
+            old_name = file.full_path
+            directory_name, file_name_without_extension, file_extension = FileSenseHelper.split_full_path(file.full_path)
+            new_name = os.path.join(directory_name, file.var_new_name.get() + file_extension)
+            try:
+                os.rename(old_name, new_name)
+                self.remove_batch_file(file)
+                self.log("Rename {} to {}".format(old_name, new_name))
+            except  WindowsError:
+                messagebox.showerror("Error", "Cannot rename {} to {}".format(old_name, new_name))
+        self.update_explorer(self.current_path)
+
+    def remove_batch_file(self, file):
+        file.frame.destroy()
+        self.batch_files.pop(file.full_path)
+
     def update_batch_files(self):
-        self.log("Update batch files")
-        for widget in self.frame_batch_files.winfo_children():
-            widget.destroy()
-        for idx, file in enumerate(self.batch_files):
-            status = Status.Loaded if self.map_async_tasks.get(file, None) is not None else Status.Loading
-            _, file_name_without_extension, file_extension = FileSenseHelper.split_full_path(file)
-            icon = FileSenseHelper.get_icon(file, status)
-
-            frame_batch_file = tk.Frame(self.frame_batch_files, height = 100, width = 520, highlightbackground="blue", highlightthickness=2)
-            frame_batch_file.place(x = 20, y = idx * 100)
-
-            label_icon = tk.Label(frame_batch_file, image = icon, compound = "top", height = 80, width = 80, borderwidth = 0)
-            label_icon.image = icon
-            label_icon.place(x = 30, y = 10)
-            label_old_name = tk.Label(frame_batch_file, text = file_name_without_extension, compound = "top", height = 2, width = 50, borderwidth = 0, anchor = "w")
-            label_old_name.place(x = 130, y = 10)
-
-            ICON_REMOVE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("remove")).resize((20, 20)))
-            ICON_REGENERATE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("regenerate")).resize((20, 20)))
-
-            button_remove = tk.Label(frame_batch_file, image = ICON_REMOVE)
-            button_remove.image = ICON_REMOVE
-            button_remove.place(x = 0, y = 32)
-            button_remove.bind("<Button-1>", lambda event, file = file: self.remove_batch_file(event, file))
-            
-            if status == Status.Loading:
-                tk.Label(frame_batch_file, text = "Generating!", compound = "top", height = 2, width = 20, borderwidth = 0, anchor = "w")\
-                    .place(x = 320, y = 10)
-            else:
-                tk.Label(frame_batch_file, text = self.map_async_tasks[file], compound = "top", height = 2, width = 50, borderwidth = 0, anchor = "w")\
-                    .place(x = 130, y = 45)
-
-                button_regenerate = tk.Label(frame_batch_file, image = ICON_REGENERATE)
-                button_regenerate.image = ICON_REGENERATE
-                button_regenerate.place(x = 320, y = 10)
-                button_regenerate.bind("<Button-1>", lambda event, file = file: self.get_suggest_naming(file, force = True))
+        for idx, file in enumerate(self.batch_files.values()):
+            if file.need_update:
+                if file.status == Status.Loading:
+                    file.button_regenerate.place_forget()
+                if file.status == Status.Loaded:
+                    file.button_regenerate.place(x = 480, y = 45)
+                file.need_update = False
+            file.frame.place(x = 10, y = idx * 100)
+        self.after(THREAD_CHECK_INTERVAL, self.update_batch_files)
 
     def toggle_logging_window(self, event):
         if self.window_log is None:
@@ -189,13 +228,41 @@ class FileSense(tk.Tk):
         self.var_address.set(self.current_path)
         try:
             items = [os.pardir] + os.listdir(path)
+            self.show_items(path, items)
         except PermissionError:
             messagebox.showerror("Error", "You do not have permission to access this folder.")
             return
-        self.show_items(path, items)
+
+    def create_batch_item_frame(self, file):
+        file.frame = tk.Frame(self.frame_batch_files, height = 100, width = 540, highlightbackground = "gray", highlightthickness = 2)
+        label_icon = tk.Label(file.frame, image = file.icon, compound = "top", height = 80, width = 80, borderwidth = 0)
+        label_icon.image = file.icon
+        label_icon.place(x = 40, y = 10)
+        _,file_name, _ = FileSenseHelper.split_full_path(file.full_path)
+        label_old_name = tk.Label(file.frame, text = file_name, compound = "top", height = 2, width = 50, borderwidth = 0, anchor = "w")
+        label_old_name.place(x = 140, y = 10)
+        label_icon = tk.Label(file.frame, image = file.icon, compound = "top", height = 80, width = 80, borderwidth = 0)
+        label_icon.image = file.icon
+        label_icon.place(x = 40, y = 10)
+
+        ICON_REMOVE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("remove")).resize((20, 20)))
+        button_remove = tk.Label(file.frame, image = ICON_REMOVE, compound = "top", height = 20, width = 20, borderwidth = 0)
+        button_remove.image = ICON_REMOVE
+        button_remove.place(x = 10, y = 32)
+        button_remove.bind("<Button-1>", lambda event, file = file: self.remove_batch_file(file))
+        entry_new_name = tk.Entry(file.frame, textvariable = file.var_new_name, width = 50, state = tk.DISABLED)
+        entry_new_name.place(x = 140, y = 45)
+
+        ICON_REGENERATE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("regenerate")).resize((20, 20)))
+        file.button_regenerate = tk.Label(file.frame, text = "Regenerate", image = ICON_REGENERATE, anchor = "e")
+        file.button_regenerate.image = ICON_REGENERATE
+        file.button_regenerate.place(x = 480, y = 45)
+        file.button_regenerate.bind("<Button-1>", lambda event, file = file: BatchFileHelper.get_suggest_name(file))
+        file.button_regenerate.place_forget()
 
     def show_items(self, path, items):
         def drag_start(event):
+            self.hide_tooltip()
             self.log("Drag start")
             if self.canvas_drop_zone is None:
                 self.canvas_drop_zone = tk.Canvas(self.frame_files, width = 560, height = 200)
@@ -209,28 +276,32 @@ class FileSense(tk.Tk):
         def drag_motion(event):
             event.widget.place(x = event.widget.winfo_x() - event.widget.start_x + event.x, y = event.widget.winfo_y() - event.widget.start_y + event.y)
 
-        def drag_end(event, full_path):
+        def drag_end(event, full_path: str):
             self.log("Drag end")
             if self.canvas_drop_zone is not None:
                 self.canvas_drop_zone.destroy()
                 self.canvas_drop_zone = None
-            event.widget.place(x = event.widget.x, y = event.widget.y)
+            try:
+                event.widget.place(x = event.widget.x, y = event.widget.y)
+            except:
+                pass
             x, y = event.widget.winfo_x() - event.widget.start_x + event.x, event.widget.winfo_y() - event.widget.start_y + event.y
             if x > 10 and x < 550 and y > 710 and y < 900:
-                if full_path not in self.batch_files:
-                    self.batch_files.append(full_path)
-                    self.get_suggest_naming(full_path)
-                    self.update_batch_files()
-
-        truncate_name = lambda name: name if len(name) < 15 else name[:12] + "..."
+                if full_path in self.batch_files.keys():
+                    return
+                file = BatchFileHelper.from_full_path(full_path)
+                self.batch_files[full_path] = file
+                self.create_batch_item_frame(file)
+                BatchFileHelper.get_suggest_name(file)
 
         self.log("Show items in path {}".format(path))
         for idx, item in enumerate(items):
             full_path = os.path.abspath(os.path.join(path, item))
-            icon = FileSenseHelper.get_icon(full_path)
-
-            label = tk.Label(self.frame_files, text = truncate_name(item), image = icon, compound = "top", height = 80, width = 80, borderwidth = 0)
+            icon = FileSenseHelper.get_file_icon(full_path)
+            label = tk.Label(self.frame_files, text = item, wraplength = 60, image = icon, compound = "top", height = 78, width = 78, borderwidth = 0, anchor = "n")
             label.image = icon
+            label.bind("<Enter>", lambda event, tooltip = item: self.show_tooltip(tooltip))
+            label.bind("<Leave>", lambda event: self.hide_tooltip())
             if FileSenseHelper.is_extension_supported(full_path):
                 label.bind("<ButtonPress-1>", drag_start)
                 label.bind("<B1-Motion>", drag_motion)
@@ -239,33 +310,14 @@ class FileSense(tk.Tk):
                 label.bind("<Button-1>", lambda event, path = full_path: self.update_explorer(path))
             label.place(x = (idx % 5) * 110, y = (idx // 5) * 110)
 
-    def update_address(self, path):
-        self.log("Update address to {}".format(self.var_address.get()))
+    def update_address(self, event):
         path = self.var_address.get()
+        self.log("Update address to {}".format(path))
         if not os.path.isdir(path):
             self.log("Path {} is not a directory".format(path))
             self.update_explorer(self.current_path)
             return
         self.update_explorer(path)
-
-    def get_suggest_naming(self, full_path, force = False):
-        def monitor_thread(thread):
-            if thread.is_alive():
-                self.after(THREAD_CHECK_INTERVAL, lambda: monitor_thread(thread))
-            else:
-                self.log("Thread finished, get suggest naming {} for file\n {}".format(thread.response, full_path))
-                self.map_async_tasks[full_path] = thread.response
-                self.update_batch_files()
-
-        if not force and self.map_async_tasks.get(full_path, None) != None:
-            return
-        if force:
-            self.map_async_tasks.pop(full_path)
-            self.update_batch_files()
-        content = Preprocessor.create(full_path).process()
-        thread = AsyncCall(content)
-        thread.start()
-        monitor_thread(thread)
 
 if __name__ == "__main__":
     app = FileSense()
