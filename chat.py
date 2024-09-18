@@ -82,6 +82,9 @@ def create_image_messages(image_base64):
         }
     ]
 
+def get_folder_suggest_naming(file_names: list[str]) -> str:
+    return "+".join([file_name[:5] for file_name in file_names]) if len(file_names) > 0 else "New Folder"
+
 def get_document_suggest_naming(document_content: PreprocessedFile):
     CHAT_LOGGER.info("Start generating the new file name...")
     if document_content.file_type == FileType.TEXT:
