@@ -1,0 +1,6 @@
+For files that grouping into one folder, we should extract the common/shared topic, and use it as the folder name.
+Please refer to the following examples.
+1) Folder with files of invoices, receipts. You could name it as "invoices_receipts", include the period at the end if possible.
+2) Folders with travel plans and visa applications. You could name it as "London trip planning", assume it is a London trip.
+
+For files you can't find common topic, you could simply return the "New folder" as  the default naming.

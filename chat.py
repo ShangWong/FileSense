@@ -37,7 +37,7 @@ def create_text_messages(document_content: PreprocessedFile):
     trimmed_content = trim_document_content(document_content.content)
 
     # Define the prompt for summarization
-    basicTone = load_prompt("./resources/prompts/basic_tone_naming.txt")
+    basic_tone = load_prompt("./resources/prompts/basic_tone_naming.txt")
     prompt = load_prompt("./resources/prompts/online_naming.txt")
 
     prompt += f"Now handle this file:\n\n{trimmed_content}.\n\n"
@@ -45,7 +45,7 @@ def create_text_messages(document_content: PreprocessedFile):
     return [
         {
             "role": "system",
-            "content": basicTone,
+            "content": basic_tone,
         },
         {
             "role": "user",
@@ -55,7 +55,7 @@ def create_text_messages(document_content: PreprocessedFile):
 
 def create_image_messages(document_content: PreprocessedFile):
     # Define the prompt for summarization
-    basicTone = load_prompt("./resources/prompts/basic_tone_naming.txt")
+    basic_tone = load_prompt("./resources/prompts/basic_tone_naming.txt")
     prompt = load_prompt("./resources/prompts/online_naming.txt")
 
     prompt += f"You will be given an image, now give this image a new name."
@@ -67,7 +67,7 @@ def create_image_messages(document_content: PreprocessedFile):
     return [
         {
             "role": "system",
-            "content": basicTone,
+            "content": basic_tone,
         },
         {
             "role": "user",
@@ -85,6 +85,36 @@ def create_image_messages(document_content: PreprocessedFile):
             ]
         }
     ]
+
+def get_folder_suggest_naming(file_names: list[str]) -> str:
+    files = ",".join(file_names)
+    basic_tone_naming = load_prompt("./resources/prompts/basic_tone_naming.txt")
+    folder_prompt = load_prompt("./resources/prompts/folder_naming.txt")
+    actual_files_prompt = f"We have the following file names in the folder: {files}. Please suggest a folder name, do not explain."
+
+    # Call the OpenAI API to get the summary
+    response = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": basic_tone_naming,
+            },
+            {
+                "role": "user",
+                "content": folder_prompt,
+            },
+            {
+                "role": "user",
+                "content": actual_files_prompt,
+            }
+        ],
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+    )
+
+    folder_name = response.choices[0].message.content
+    CHAT_LOGGER.info("Folder name was generated successfully.")
+
+    return folder_name
 
 def get_document_suggest_naming(document_content: PreprocessedFile):
     CHAT_LOGGER.info("Start generating the new file name...")
@@ -111,7 +141,7 @@ def summarize_document(document_content):
     trimmed_content = trim_document_content(document_content)
 
     # Define the prompt for summarization
-    basicTone = load_prompt("./resources/prompts/basic_tone.txt")
+    basic_tone = load_prompt("./resources/prompts/basic_tone.txt")
     prompt = load_prompt("./resources/prompts/online.txt")
 
     prompt += f"Now handle this doc:\n\n{trimmed_content}.\n\n"
@@ -121,7 +151,7 @@ def summarize_document(document_content):
         messages=[
             {
                 "role": "system",
-                "content": basicTone,
+                "content": basic_tone,
             },
             {
                 "role": "user",
