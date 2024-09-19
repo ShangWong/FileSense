@@ -116,6 +116,9 @@ def get_folder_suggest_naming(file_names: list[str]) -> str:
 
     return folder_name
 
+def get_document_suggest_naming_and_summary(document_content: PreprocessedFile):
+    return [get_document_suggest_naming(document_content), summarize_document(document_content.content)]
+
 def get_document_suggest_naming(document_content: PreprocessedFile):
     CHAT_LOGGER.info("Start generating the new file name...")
     if document_content.file_type == FileType.TEXT:

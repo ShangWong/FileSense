@@ -6,15 +6,12 @@ from threading import Thread
 from dataclasses import dataclass
 from enum import Enum
 
-from chat import get_document_suggest_naming, get_folder_suggest_naming
+from chat import get_document_suggest_naming_and_summary, get_folder_suggest_naming
 from preprocessor import Preprocessor
 
 SUPPORTED_TEXT_EXTENSIONS = [".txt", ".pdf", ".xlsx", ".xls", ".doc", ".docx", ".md"]
 SUPPORTED_IMG_EXTENSIONS = [".png", ".gif", ".jpg", ".jpeg", ".bmp"]
 SUPPORTED_FILE_EXTENSIONS = SUPPORTED_TEXT_EXTENSIONS + SUPPORTED_IMG_EXTENSIONS
-
-# TODO: Add more supported extensions
-STATUS_SUPPORTED_EXTENSIONS = [".xlsx"]
 
 THREAD_CHECK_INTERVAL = 500 # millisecond
 MAX_BATCH_FILE_NUMBER = 7
@@ -44,6 +41,7 @@ class BatchFile:
     content: str
     status: Status
     suggest_name: str
+    summary: str
     var_new_name: tk.StringVar
     frame: tk.Frame = None
     need_update: bool = False
@@ -51,32 +49,35 @@ class BatchFile:
 class BatchFileHelper:
     @staticmethod
     def from_full_path(full_path: str):
-        return BatchFile(full_path, FileSenseHelper.get_file_icon(full_path), Preprocessor.create(full_path).process(), Status.Normal, None, tk.StringVar())
+        return BatchFile(full_path, FileSenseHelper.get_file_icon(full_path, status = Status.Normal), Preprocessor.create(full_path).process(), Status.Normal, None, None, tk.StringVar())
 
     @staticmethod
     def callback_get_file_suggest_name(*args):
-        file, suggest_name = args[0]
+        file, response = args[0]
+        suggest_name, summary = response
         file.status = Status.Loaded
         # Remove invalid characters for file name
         suggest_name = re.sub(r'[/:*?"<>|]', '', suggest_name)
         file.suggest_name = suggest_name
+        file.summary = summary
         file.need_update = True
         file.var_new_name.set(suggest_name)
-        for widget in file.frame.winfo_children():
-            if widget.widgetName == "entry":
-                widget.config(state = tk.NORMAL)
+        file.icon = FileSenseHelper.get_file_icon(file.full_path, file.status)
+        file._entry.config(state = tk.NORMAL)
+        file._icon.config(image = file.icon)
+        file._icon.image = file.icon
 
     @staticmethod
     @run_async(callback_get_file_suggest_name)
     def get_file_suggest_name(file: BatchFile):
         file.status = Status.Loading
         file.var_new_name.set("Gererating...")
-        if file.frame is not None:
-            for widget in file.frame.winfo_children():
-                if widget.widgetName == "entry":
-                    widget.config(state = tk.DISABLED)
+        file.icon = FileSenseHelper.get_file_icon(file.full_path, file.status)
+        file._entry.config(state = tk.DISABLED)
+        file._icon.config(image = file.icon)
+        file._icon.image = file.icon
         file.need_update = True
-        return [file, get_document_suggest_naming(file.content)]
+        return [file, get_document_suggest_naming_and_summary(file.content)]
 
     @staticmethod
     def callback_get_folder_suggest_name(*args):
@@ -103,8 +104,8 @@ class FileSenseHelper:
             if os.path.isdir(full_path):
                 return RESOURCE_ICON_FORMAT.format("folder")
             _, _, file_extension = FileSenseHelper.split_full_path(full_path)
-            if file_extension.lower() in STATUS_SUPPORTED_EXTENSIONS:
-                return RESOURCE_ICON_FORMAT.format(file_extension[1:].lower() + '_' + status.name.lower())
+            if file_extension.lower() in SUPPORTED_TEXT_EXTENSIONS and status == Status.Loaded:
+                return RESOURCE_ICON_FORMAT.format(file_extension[1:].lower() + '_' + "loaded")
             if file_extension.lower() in SUPPORTED_TEXT_EXTENSIONS:
                 return RESOURCE_ICON_FORMAT.format(file_extension[1:].lower())
             return RESOURCE_ICON_FORMAT.format("file")
@@ -175,9 +176,13 @@ class FileSense(tk.Tk):
         else:
             self.entry_folder.place_forget()
 
-    def show_tooltip(self, tooltip):
+    def show_tooltip(self, tooltip, func = None, highlightthickness = 0):
+        if func != None:
+            tooltip = func()
+        if tooltip == None or tooltip == "":
+            return
         self.window_tooltip = tk.Toplevel(self)
-        tooltip_label = tk.Label(self.window_tooltip, text = tooltip)
+        tooltip_label = tk.Label(self.window_tooltip, text = tooltip, wraplength = 420, highlightbackground = "gray", highlightthickness = highlightthickness)
         tooltip_label.pack()
         self.window_tooltip.overrideredirect(True)
         x = self.winfo_pointerx() + 20
@@ -215,6 +220,7 @@ class FileSense(tk.Tk):
                 messagebox.showerror("Error", "Cannot rename {} to {}".format(old_name, new_name))
         if _status:
             self.checkbox_move.deselect()
+            self.entry_folder.place_forget()
             self.var_folder.set("")
         self.update_explorer(self.current_path)
 
@@ -262,15 +268,17 @@ class FileSense(tk.Tk):
 
     def create_batch_item_frame(self, file):
         file.frame = tk.Frame(self.frame_batch_files, height = 100, width = 540)
-        label_icon = tk.Label(file.frame, image = file.icon, compound = "top", height = 80, width = 80, borderwidth = 0)
-        label_icon.image = file.icon
-        label_icon.place(x = 40, y = 10)
         _,file_name, _ = FileSenseHelper.split_full_path(file.full_path)
-        label_old_name = tk.Label(file.frame, text = file_name, compound = "top", height = 2, width = 50, borderwidth = 0, anchor = "w")
-        label_old_name.place(x = 140, y = 15)
         label_icon = tk.Label(file.frame, image = file.icon, compound = "top", height = 80, width = 80, borderwidth = 0)
         label_icon.image = file.icon
         label_icon.place(x = 40, y = 15)
+        func = lambda:file.summary
+        label_icon.bind("<Enter>", lambda event, func=func: self.show_tooltip(None, func, 1))
+        label_icon.bind("<Leave>", lambda event: self.hide_tooltip())
+        file._icon = label_icon
+
+        label_old_name = tk.Label(file.frame, text = file_name, compound = "top", height = 2, width = 50, borderwidth = 0, anchor = "w")
+        label_old_name.place(x = 140, y = 15)
 
         ICON_REMOVE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("remove")).resize((20, 20)))
         button_remove = tk.Label(file.frame, image = ICON_REMOVE, compound = "top", height = 20, width = 20, borderwidth = 0)
@@ -279,6 +287,7 @@ class FileSense(tk.Tk):
         button_remove.bind("<Button-1>", lambda event, file = file: self.remove_batch_file(file))
         entry_new_name = tk.Entry(file.frame, textvariable = file.var_new_name, width = 50, state = tk.DISABLED)
         entry_new_name.place(x = 140, y = 50)
+        file._entry = entry_new_name
 
         ICON_REGENERATE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("regenerate")).resize((20, 20)))
         file.button_regenerate = tk.Label(file.frame, text = "Regenerate", image = ICON_REGENERATE, anchor = "e")
