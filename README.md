@@ -1,4 +1,5 @@
 # FileSense
+![FileSense drawio](https://github.com/user-attachments/assets/9749e341-d37e-4fe3-9976-f9136c0dcc58)
 
 ## Setup
 
