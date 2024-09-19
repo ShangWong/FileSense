@@ -89,7 +89,8 @@ def create_image_messages(document_content: PreprocessedFile):
 def get_folder_suggest_naming(file_names: list[str]) -> str:
     files = ",".join(file_names)
     basic_tone_naming = load_prompt("./resources/prompts/basic_tone_naming.txt")
-    folder_prompt = f"We have the following file names in the folder: " + files + ". Please suggest a folder name, do not explain."
+    folder_prompt = load_prompt("./resources/prompts/folder_naming.txt")
+    actual_files_prompt = f"We have the following file names in the folder: {files}. Please suggest a folder name, do not explain."
 
     # Call the OpenAI API to get the summary
     response = client.chat.completions.create(
@@ -101,6 +102,10 @@ def get_folder_suggest_naming(file_names: list[str]) -> str:
             {
                 "role": "user",
                 "content": folder_prompt,
+            },
+            {
+                "role": "user",
+                "content": actual_files_prompt,
             }
         ],
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
