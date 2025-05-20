@@ -34,3 +34,8 @@ OPENAI_API_KEY='phi3.5'
 OPENAI_BASE_URL='http://localhost:11434/v1'
 OPENAI_MODEL='phi3.5'
 ```
+
+## Package the app for Windows with PyInstaller
+```bash
+pyinstaller --onefile --windowed  --add-data "resources;resources" app.py
+```

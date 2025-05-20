@@ -1,4 +1,4 @@
-import os
+import os, sys
 import dotenv
 from openai import OpenAI
 from log import get_logger
@@ -11,6 +11,15 @@ client = OpenAI()
 
 CHAT_LOGGER = get_logger("chat")
 
+def resource_path(relative_path):
+    """ Get absolute path to resource (compatible with PyInstaller) """
+    try:
+        base_path = sys._MEIPASS  # PyInstaller temp folder
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    CHAT_LOGGER.info(f"The resource path points to {os.path.join(base_path, relative_path)}.")
+    return os.path.join(base_path, relative_path)
+
 @dataclass
 class LLMResponse:
     isOriginTitleUsable: bool
@@ -20,7 +29,7 @@ class LLMResponse:
 def load_prompt(file_path):
     # Loads the prompt from a text file.
     try:
-        with open(file_path, 'r') as file:
+        with open(resource_path(file_path), 'r') as file:
             return file.read()
     except FileNotFoundError:
         CHAT_LOGGER.error(f"Error: The file {file_path} was not found.")
@@ -37,8 +46,8 @@ def create_text_messages(document_content: PreprocessedFile):
     trimmed_content = trim_document_content(document_content.content)
 
     # Define the prompt for summarization
-    basic_tone = load_prompt("./resources/prompts/basic_tone_naming.txt")
-    prompt = load_prompt("./resources/prompts/online_naming.txt")
+    basic_tone = load_prompt("resources\\prompts\\basic_tone_naming.txt")
+    prompt = load_prompt("resources\\prompts\\online_naming.txt")
 
     prompt += f"Now handle this file:\n\n{trimmed_content}.\n\n"
 
@@ -55,8 +64,8 @@ def create_text_messages(document_content: PreprocessedFile):
 
 def create_image_messages(document_content: PreprocessedFile):
     # Define the prompt for summarization
-    basic_tone = load_prompt("./resources/prompts/basic_tone_naming.txt")
-    prompt = load_prompt("./resources/prompts/online_naming.txt")
+    basic_tone = load_prompt("resources\\prompts\\basic_tone_naming.txt")
+    prompt = load_prompt("resources\\prompts\\online_naming.txt")
 
     prompt += f"You will be given an image, now give this image a new name."
 
@@ -88,8 +97,8 @@ def create_image_messages(document_content: PreprocessedFile):
 
 def get_folder_suggest_naming(file_names: list[str]) -> str:
     files = ",".join(file_names)
-    basic_tone_naming = load_prompt("./resources/prompts/basic_tone_naming.txt")
-    folder_prompt = load_prompt("./resources/prompts/folder_naming.txt")
+    basic_tone_naming = load_prompt("resources\\prompts\\basic_tone_naming.txt")
+    folder_prompt = load_prompt("resources\\prompts\\folder_naming.txt")
     actual_files_prompt = f"We have the following file names in the folder: {files}. Please suggest a folder name, do not explain."
 
     # Call the OpenAI API to get the summary
@@ -144,8 +153,8 @@ def summarize_document(document_content):
     trimmed_content = trim_document_content(document_content)
 
     # Define the prompt for summarization
-    basic_tone = load_prompt("./resources/prompts/basic_tone.txt")
-    prompt = load_prompt("./resources/prompts/online.txt")
+    basic_tone = load_prompt("resources\\prompts\\basic_tone.txt")
+    prompt = load_prompt("resources\\prompts\\online.txt")
 
     prompt += f"Now handle this doc:\n\n{trimmed_content}.\n\n"
 

@@ -1,4 +1,4 @@
-import os, time, asyncio, re
+import os, sys, asyncio, re
 import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
@@ -22,6 +22,15 @@ class Status(Enum):
     Normal = 1
     Loading = 2
     Loaded = 3
+
+def resource_path(relative_path):
+    """ Get absolute path to resource (compatible with PyInstaller) """
+    try:
+        base_path = sys._MEIPASS  # PyInstaller temp folder
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 def run_async(callback):
     def inner(func):
@@ -112,7 +121,7 @@ class FileSenseHelper:
 
         _, _, file_extension = FileSenseHelper.split_full_path(full_path)
         icon_path = full_path if file_extension.lower() in SUPPORTED_IMG_EXTENSIONS else get_extension_icon_path()
-        return ImageTk.PhotoImage(Image.open(icon_path).resize((60, 60)))
+        return ImageTk.PhotoImage(Image.open(resource_path(icon_path)).resize((60, 60)))
 
     @staticmethod
     def is_extension_supported(full_path):
@@ -280,7 +289,7 @@ class FileSense(tk.Tk):
         label_old_name = tk.Label(file.frame, text = file_name, compound = "top", height = 2, width = 50, borderwidth = 0, anchor = "w")
         label_old_name.place(x = 140, y = 15)
 
-        ICON_REMOVE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("remove")).resize((20, 20)))
+        ICON_REMOVE = ImageTk.PhotoImage(Image.open(resource_path(RESOURCE_ICON_FORMAT.format("remove"))).resize((20, 20)))
         button_remove = tk.Label(file.frame, image = ICON_REMOVE, compound = "top", height = 20, width = 20, borderwidth = 0)
         button_remove.image = ICON_REMOVE
         button_remove.place(x = 10, y = 42)
@@ -289,7 +298,7 @@ class FileSense(tk.Tk):
         entry_new_name.place(x = 140, y = 50)
         file._entry = entry_new_name
 
-        ICON_REGENERATE = ImageTk.PhotoImage(Image.open(RESOURCE_ICON_FORMAT.format("regenerate")).resize((20, 20)))
+        ICON_REGENERATE = ImageTk.PhotoImage(Image.open(resource_path(RESOURCE_ICON_FORMAT.format("regenerate"))).resize((20, 20)))
         file.button_regenerate = tk.Label(file.frame, text = "Regenerate", image = ICON_REGENERATE, anchor = "e")
         file.button_regenerate.image = ICON_REGENERATE
         file.button_regenerate.place(x = 480, y = 50)
